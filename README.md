@@ -7,21 +7,21 @@ Actually, since version 1.4.1, this project has been split in two parts:
 
 * [Elasticsearch Beyonder](https://github.com/dadoonet/elasticsearch-beyonder/) which find resources in
 project classpath to automatically create indices, types and templates.
-* This project which is building Client and Node beans using Spring.
-
-The Spring specific part of this project will basically move to
-[spring-data-elasticsearch](https://github.com/spring-projects/spring-data-elasticsearch) project.
+* This project which is building Client and Node beans using [Spring framework](http://projects.spring.io/spring-framework/).
 
 
-Versions
---------
+Documentation
+-------------
 
-* For 1.x elasticsearch versions, look at [master branch](https://github.com/dadoonet/spring-elasticsearch/tree/master).
+* For 2.x elasticsearch versions, you are reading the latest documentation.
+* For 1.x elasticsearch versions, look at [es-1.5 branch](https://github.com/dadoonet/spring-elasticsearch/tree/es-1.5).
 * For 0.x elasticsearch versions, look at [0.x branch](https://github.com/dadoonet/spring-elasticsearch/tree/0.x).
 
 |   spring-elasticsearch  | elasticsearch |   Spring     | Release date |
 |:-----------------------:|:-------------:|:------------:|:------------:|
-|           1.4.2         |      1.4      |    4.1.4     |  2015-03-03  |
+|           2.1.0         |  2.0, 2.1     |    4.2.3     |  2015-11-25  |
+|           2.0.0         |      2.0      |    4.1.4     |  2015-10-25  |
+|           1.4.2         |     < 2.0     |    4.1.4     |  2015-03-03  |
 |           1.4.1         |      1.4      |    4.1.4     |  2015-02-28  |
 |           1.4.0         |      1.4      |    4.1.4     |  2015-01-03  |
 |           1.3.0         |      1.3      |    4.0.6     |  2014-09-01  |
@@ -30,8 +30,8 @@ Versions
 Build Status
 ------------
 
-Thanks to cloudbees for the [build status](https://buildhive.cloudbees.com):
-[![Build Status](https://buildhive.cloudbees.com/job/dadoonet/job/spring-elasticsearch/badge/icon)](https://buildhive.cloudbees.com/job/dadoonet/job/spring-elasticsearch/)
+Thanks to Travis for the [build status](https://travis-ci.org/dadoonet/spring-elasticsearch): 
+[![Build Status](https://travis-ci.org/dadoonet/spring-elasticsearch.svg)](https://travis-ci.org/dadoonet/spring-elasticsearch)
 
 
 Getting Started
@@ -45,7 +45,7 @@ Import spring-elasticsearch in you project `pom.xml` file:
 <dependency>
   <groupId>fr.pilato.spring</groupId>
   <artifactId>spring-elasticsearch</artifactId>
-  <version>1.4.2</version>
+  <version>2.1.0</version>
 </dependency>
 ```
 
@@ -55,7 +55,33 @@ If you want to set a specific version of elasticsearch, add it to your `pom.xml`
 <dependency>
   <groupId>org.elasticsearch</groupId>
   <artifactId>elasticsearch</artifactId>
-  <version>1.4.4</version>
+  <version>2.1.0</version>
+</dependency>
+```
+
+### Logger
+
+We are using [slf4j](http://www.slf4j.org/) for logging but you have to provide the logging implementation
+you want to use and bind it.
+
+For example for this project we are using for tests [log4j2](http://logging.apache.org/log4j/). 
+If you want to do so, add to your `pom.xml`:
+
+```xml
+<dependency>
+    <groupId>org.apache.logging.log4j</groupId>
+    <artifactId>log4j-1.2-api</artifactId>
+    <version>2.4.1</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.logging.log4j</groupId>
+    <artifactId>log4j-slf4j-impl</artifactId>
+    <version>2.4.1</version>
+</dependency>
+<dependency>
+    <groupId>org.apache.logging.log4j</groupId>
+    <artifactId>log4j-core</artifactId>
+    <version>2.4.1</version>
 </dependency>
 ```
 
@@ -71,7 +97,7 @@ In your spring context file, just add namespaces like this:
 	xmlns:elasticsearch="http://www.pilato.fr/schema/elasticsearch"
 	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
 		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-3.0.xsd
-        http://www.pilato.fr/schema/elasticsearch http://www.pilato.fr/schema/elasticsearch/elasticsearch-0.3.xsd">
+        http://www.pilato.fr/schema/elasticsearch http://www.pilato.fr/schema/elasticsearch/elasticsearch-0.4.xsd">
 </beans>
 ```
 
@@ -182,6 +208,13 @@ You can (you should) define your nodes settings when using a transport client:
 ```xml
 <elasticsearch:client id="esClient" esNodes="localhost:9300,localhost:9301" />
 ```
+
+You can also add plugins to the transport client in case it needs it:
+
+```xml
+<elasticsearch:client id="esClient" plugins="org.elasticsearch.plugin.deletebyquery.DeleteByQueryPlugin" />
+```
+
 
 Node Client Properties
 ----------------------
@@ -347,10 +380,10 @@ classpath. The factory will detect it and will try to merge settings unless you 
 If merging fails, the factory will not start.
 
 
-### Force rebuild mappings (use with caution)
+### Force rebuild indices (use with caution)
 
-For test purpose or for continuous integration, you could force the factory to clean the previous `type` when starting the client.
-It will *remove all your datas* for that `type`. Just set  `forceMapping` property to `true`.
+For test purpose or for continuous integration, you could force the factory to clean the previous `indices` when starting the client.
+It will *remove all your datas* for every index which has been defined. Just set  `forceMapping` property to `true`.
 
 ```xml
 <elasticsearch:client id="esClient" forceMapping="true" />

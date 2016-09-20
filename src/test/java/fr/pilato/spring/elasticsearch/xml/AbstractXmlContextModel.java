@@ -20,19 +20,22 @@
 package fr.pilato.spring.elasticsearch.xml;
 
 import fr.pilato.spring.elasticsearch.BaseTest;
+import fr.pilato.spring.elasticsearch.proxy.GenericInvocationHandler;
+
 import org.elasticsearch.client.Client;
 import org.elasticsearch.cluster.ClusterState;
 import org.elasticsearch.cluster.metadata.IndexMetaData;
 import org.elasticsearch.cluster.metadata.MappingMetaData;
-import org.elasticsearch.indices.IndexMissingException;
 import org.elasticsearch.node.Node;
 import org.junit.After;
 import org.junit.Before;
+import org.springframework.aop.framework.Advised;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.lang.reflect.Proxy;
 
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.Assert.assertThat;
@@ -89,7 +92,8 @@ public abstract class AbstractXmlContextModel extends BaseTest {
         }
         if (async != null) {
             if (async) {
-                assertThat(Proxy.getInvocationHandler(client), not(nullValue()));
+                assertThat(client, instanceOf(Advised.class));
+                assertThat(((Advised) client).getAdvisors()[0].getAdvice() , instanceOf(GenericInvocationHandler.class));
             } else {
                 try {
                     Proxy.getInvocationHandler(client);
@@ -124,20 +128,16 @@ public abstract class AbstractXmlContextModel extends BaseTest {
             node = ctx.getBean(Node.class);
         }
         if (async) {
-            assertThat(Proxy.getInvocationHandler(node), not(nullValue()));
+            assertThat(node, instanceOf(Advised.class));
+            assertThat(((Advised) node).getAdvisors()[0].getAdvice(), instanceOf(GenericInvocationHandler.class));
         }
         assertThat(node, not(nullValue()));
         return node;
     }
 
     protected boolean isMappingExist(Client client, String index, String type) {
-        IndexMetaData imd = null;
-        try {
-            ClusterState cs = client.admin().cluster().prepareState().setIndices(index).execute().actionGet().getState();
-            imd = cs.getMetaData().index(index);
-        } catch (IndexMissingException e) {
-            // If there is no index, there is no mapping either
-        }
+        ClusterState cs = client.admin().cluster().prepareState().setIndices(index).get().getState();
+        IndexMetaData imd = cs.getMetaData().index(index);
 
         if (imd == null) return false;
 

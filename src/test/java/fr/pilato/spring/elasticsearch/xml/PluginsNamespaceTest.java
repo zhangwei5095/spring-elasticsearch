@@ -19,15 +19,14 @@
 
 package fr.pilato.spring.elasticsearch.xml;
 
-import org.elasticsearch.node.Node;
+import org.elasticsearch.client.Client;
 import org.junit.Test;
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
+import java.io.IOException;
 
 
-public class NodeNamespaceTest extends AbstractXmlContextModel {
-    private String[] xmlBeans = {"models/node-namespace/node-namespace-context.xml"};
+public class PluginsNamespaceTest extends AbstractXmlContextModel {
+    private String[] xmlBeans = {"models/plugins/plugins-namespace-context.xml"};
 
     @Override
     String[] xmlBeans() {
@@ -35,14 +34,8 @@ public class NodeNamespaceTest extends AbstractXmlContextModel {
     }
 
 	@Test
-	public void test_simple_node() {
-		Node node = checkNode("testNode");
-        assertThat(node.settings().get("cluster.name"), is("elasticsearch"));
-	}
-	
-	@Test
-	public void test_node_settings() {
-        Node node = checkNode("testNodeSettings");
-        assertThat(node.settings().get("cluster.name"), is("junit.cluster.xml"));
-	}
+	public void test_plugin() throws IOException {
+		Client client = checkClient("testTransportClient");
+
+    }
 }

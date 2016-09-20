@@ -20,18 +20,18 @@
 package fr.pilato.spring.elasticsearch;
 
 import fr.pilato.spring.elasticsearch.proxy.GenericInvocationHandler;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.elasticsearch.common.settings.ImmutableSettings;
+
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.node.Node;
 import org.elasticsearch.node.NodeBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.util.Assert;
 
-import java.lang.reflect.Proxy;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Future;
 
@@ -49,13 +49,14 @@ public class ElasticsearchNodeFactoryBean extends ElasticsearchAbstractFactoryBe
 	implements FactoryBean<Node>,
 		InitializingBean, DisposableBean {
 
-	protected final Log logger = LogFactory.getLog(getClass());
+	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private Node node;
 	private Node proxyfiedNode;
 
 	@Override
 	public void afterPropertiesSet() throws Exception {
+
 		if (async) {
 			Assert.notNull(taskExecutor);
 
@@ -65,8 +66,12 @@ public class ElasticsearchNodeFactoryBean extends ElasticsearchAbstractFactoryBe
 					return initialize();
 				}
 			});
-			proxyfiedNode = (Node) Proxy.newProxyInstance(Node.class.getClassLoader(),
-					new Class[]{Node.class}, new GenericInvocationHandler(nodeFuture));
+
+			ProxyFactory proxyFactory = new ProxyFactory();
+			proxyFactory.setProxyTargetClass(true);
+			proxyFactory.setTargetClass(Node.class);
+			proxyFactory.addAdvice(new GenericInvocationHandler(nodeFuture));
+			proxyfiedNode = (Node) proxyFactory.getProxy();
 
 		} else {
 			node = initialize();
@@ -108,8 +113,8 @@ public class ElasticsearchNodeFactoryBean extends ElasticsearchAbstractFactoryBe
 		}
 
 		if (null != settingsFile && null == properties) {
-			Settings settings = ImmutableSettings.settingsBuilder()
-					.loadFromClasspath(this.settingsFile)
+			Settings settings = Settings.builder()
+					.loadFromStream(settingsFile, ElasticsearchNodeFactoryBean.class.getResourceAsStream("/" + settingsFile))
 					.build();
 			nodeBuilder.getSettings().put(settings);
 		}
@@ -121,6 +126,7 @@ public class ElasticsearchNodeFactoryBean extends ElasticsearchAbstractFactoryBe
 		if (logger.isDebugEnabled()) logger.debug("Starting ElasticSearch node...");
 		node = nodeBuilder.node();
 		logger.info("Node [" + node.settings().get("name") + "] for [" + node.settings().get("cluster.name") + "] cluster started...");
+		if (logger.isDebugEnabled()) logger.debug("  - home : " + node.settings().get("path.home"));
 		if (logger.isDebugEnabled()) logger.debug("  - data : " + node.settings().get("path.data"));
 		if (logger.isDebugEnabled()) logger.debug("  - logs : " + node.settings().get("path.logs"));
 

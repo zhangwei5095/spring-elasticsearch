@@ -19,15 +19,11 @@
 
 package fr.pilato.spring.elasticsearch.xml;
 
-import org.elasticsearch.node.Node;
 import org.junit.Test;
 
-import static org.hamcrest.Matchers.is;
-import static org.junit.Assert.assertThat;
 
-
-public class NodeNamespaceTest extends AbstractXmlContextModel {
-    private String[] xmlBeans = {"models/node-namespace/node-namespace-context.xml"};
+public class IndicesAlreadyExistTest extends AbstractXmlContextModel {
+    private String[] xmlBeans = {"models/indices-already-exist-86/indices-already-exist-86.xml"};
 
     @Override
     String[] xmlBeans() {
@@ -36,13 +32,10 @@ public class NodeNamespaceTest extends AbstractXmlContextModel {
 
 	@Test
 	public void test_simple_node() {
-		Node node = checkNode("testNode");
-        assertThat(node.settings().get("cluster.name"), is("elasticsearch"));
-	}
-	
-	@Test
-	public void test_node_settings() {
-        Node node = checkNode("testNodeSettings");
-        assertThat(node.settings().get("cluster.name"), is("junit.cluster.xml"));
+        // We don't test really something.
+        // We just expect that there won't be any exception while starting the test
+        // If someone wants to check anything, he has to read the logs for this test
+        // and check that "we have to check some indices status as they already exist..."
+        // appears...
 	}
 }

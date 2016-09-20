@@ -23,16 +23,22 @@ import fr.pilato.elasticsearch.tools.index.IndexFinder;
 import fr.pilato.elasticsearch.tools.template.TemplateFinder;
 import fr.pilato.elasticsearch.tools.type.TypeFinder;
 import fr.pilato.spring.elasticsearch.proxy.GenericInvocationHandler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthRequestBuilder;
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
+import org.elasticsearch.action.admin.cluster.state.ClusterStateRequestBuilder;
+import org.elasticsearch.action.admin.cluster.state.ClusterStateResponse;
 import org.elasticsearch.client.Client;
+import org.elasticsearch.cluster.health.ClusterHealthStatus;
+import org.elasticsearch.cluster.health.ClusterIndexHealth;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.util.Assert;
 
 import java.io.IOException;
-import java.lang.reflect.Proxy;
 import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -60,8 +66,7 @@ import static fr.pilato.elasticsearch.tools.type.TypeElasticsearchUpdater.create
  * contains all information needed for your client, e.g.: cluster.name
  * <br>
  * If you want to  modify the filename used for properties, just define the settingsFile property.
- * <p>
- * In the following example, we will create two indexes :
+ * <p>In the following example, we will create two indexes :</p>
  * <ul>
  *   <li>twitter
  *   <li>rss
@@ -76,8 +81,7 @@ import static fr.pilato.elasticsearch.tools.type.TypeElasticsearchUpdater.create
  *   <li>source
  * </ul>
  * Then we will define an alias alltheworld for twitter and rss indexes.
- * </p>
- * 
+ *
  * <pre>
  * {@code
  *  <bean id="esClient"
@@ -116,7 +120,6 @@ import static fr.pilato.elasticsearch.tools.type.TypeElasticsearchUpdater.create
  * So if you create a file named /es/twitter/_settings.json in your src/main/resources folder (for maven lovers),
  * it will be used by the factory to create the twitter index.
  * <pre>
- * {@code
  * {
  *   "index" : {
  *     "number_of_shards" : 3,
@@ -131,7 +134,6 @@ import static fr.pilato.elasticsearch.tools.type.TypeElasticsearchUpdater.create
  * So if you create a file named /es/twitter/tweet.json in your src/main/resources folder (for maven lovers),
  * it will be used by the factory to create the tweet type in twitter index.
  * <pre>
- * {@code
  * {
  *   "tweet" : {
  *     "properties" : {
@@ -144,16 +146,14 @@ import static fr.pilato.elasticsearch.tools.type.TypeElasticsearchUpdater.create
  * By convention, the factory will create all settings and mappings found under the /es classpath.<br>
  * You can disable convention and use configuration by setting autoscan to false.
  * 
- * @see {@link ElasticsearchTransportClientFactoryBean} to get a *simple*
- *      client.
- * @see {@link ElasticsearchClientFactoryBean} to get a client from a cluster
- *      node.
+ * @see ElasticsearchTransportClientFactoryBean to get a *simple* client.
+ * @see ElasticsearchClientFactoryBean to get a client from a cluster node.
  * @author David Pilato
  */
 public abstract class ElasticsearchAbstractClientFactoryBean extends ElasticsearchAbstractFactoryBean 
 	implements FactoryBean<Client>,	InitializingBean, DisposableBean {
 
-	private static final Logger logger = LogManager.getLogger(ElasticsearchAbstractClientFactoryBean.class);
+	private static final Logger logger = LoggerFactory.getLogger(ElasticsearchAbstractClientFactoryBean.class);
 
 	protected Client client;
 	protected Client proxyfiedClient;
@@ -227,8 +227,8 @@ public abstract class ElasticsearchAbstractClientFactoryBean extends Elasticsear
 	
 	/**
 	 * Define mappings you want to manage with this factory
-	 * <br/>use : indexname/mappingname form
-	 * <p>Example :<br/>
+	 * <br>use : indexname/mappingname form
+	 * <p>Example :</p>
  	 * <pre>
 	 * {@code
 	 * <property name="mappings">
@@ -248,8 +248,8 @@ public abstract class ElasticsearchAbstractClientFactoryBean extends Elasticsear
 
 	/**
 	 * Define aliases you want to manage with this factory
-	 * <br/>use : aliasname:indexname form
-	 * <p>Example :<br/>
+	 * <br>use : aliasname:indexname form
+	 * <p>Example :</p>
  	 * <pre>
 	 * {@code
 	 * <property name="aliases">
@@ -267,9 +267,8 @@ public abstract class ElasticsearchAbstractClientFactoryBean extends Elasticsear
 	}
 
 	/**
-	 * Define templates you want to manage with this factory <br/>
-	 * <p>
-	 * Example :<br/>
+	 * Define templates you want to manage with this factory
+	 * <p>Example :</p>
 	 * 
 	 * <pre>
 	 * {@code
@@ -290,14 +289,14 @@ public abstract class ElasticsearchAbstractClientFactoryBean extends Elasticsear
 	
 	/**
 	 * Classpath root for index and mapping files (default : /es)
-	 * <p>Example :<br/>
+	 * <p>Example :</p>
  	 * <pre>
 	 * {@code
 	 * <property name="classpathRoot" value="/es" />
 	 * }
 	 * </pre>
 	 * That means that the factory will look in es folder to find index and mappings settings.
-	 * <br/>So if you want to define a mapping for the tweet mapping in the twitter index, you
+	 * <br>So if you want to define a mapping for the tweet mapping in the twitter index, you
 	 * should put a tweet.json file under /es/twitter/ folder.
 	 * @param classpathRoot Classpath root for index and mapping files
 	 * @see #setMappings(String[])
@@ -307,6 +306,7 @@ public abstract class ElasticsearchAbstractClientFactoryBean extends Elasticsear
 		if (classpathRoot.startsWith("/")) {
 			this.classpathRoot = classpathRoot.substring(1, classpathRoot.length());
 		} else {
+
 			this.classpathRoot = classpathRoot;
 		}
 	}
@@ -323,8 +323,12 @@ public abstract class ElasticsearchAbstractClientFactoryBean extends Elasticsear
 					return initialize();
 				}
 			});
-			proxyfiedClient = (Client) Proxy.newProxyInstance(Client.class.getClassLoader(),
-					new Class[]{Client.class}, new GenericInvocationHandler(future));
+
+			ProxyFactory proxyFactory = new ProxyFactory();
+			proxyFactory.setProxyTargetClass(true);
+			proxyFactory.setTargetClass(Client.class);
+			proxyFactory.addAdvice(new GenericInvocationHandler(future));
+			proxyfiedClient = (Client) proxyFactory.getProxy();
 		} else {
 			client = initialize();
 		}
@@ -332,13 +336,48 @@ public abstract class ElasticsearchAbstractClientFactoryBean extends Elasticsear
 
 	private Client initialize() throws Exception {
 		client = buildClient();
-		// TODO Only wait for potential indices
-		client.admin().cluster().prepareHealth().setWaitForYellowStatus().get();
 		if (autoscan) {
 			computeMappings();
 			computeTemplates();
 		}
-		initTemplates();	
+
+		// We extract indexes and mappings to manage from mappings definition
+		if (mappings != null && mappings.length > 0) {
+            ClusterHealthRequestBuilder healthRequestBuilder = client.admin().cluster().prepareHealth().setWaitForYellowStatus();
+            ClusterStateRequestBuilder clusterStateRequestBuilder = client.admin().cluster().prepareState();
+            Map<String, Collection<String>> indices = getIndexMappings(mappings);
+            for (String index : indices.keySet()) {
+                clusterStateRequestBuilder.setIndices(index);
+            }
+            ClusterStateResponse clusterStateResponse = clusterStateRequestBuilder.get();
+
+            boolean checkIndicesStatus = false;
+            for (String index : indices.keySet()) {
+                if (clusterStateResponse.getState().getMetaData().indices().containsKey(index)) {
+                    healthRequestBuilder.setIndices(index);
+                    checkIndicesStatus = true;
+                }
+            }
+
+            if (checkIndicesStatus) {
+                logger.debug("we have to check some indices status as they already exist...");
+                ClusterHealthResponse healths = healthRequestBuilder.get();
+                if (healths.isTimedOut()) {
+                    logger.warn("we got a timeout when checking indices status...");
+                    if (healths.getIndices() != null) {
+                        for (ClusterIndexHealth health : healths.getIndices().values()) {
+                            if (health.getStatus() == ClusterHealthStatus.RED) {
+                                logger.warn("index [{}] is in RED state", health.getIndex());
+                            } else {
+                                logger.debug("index [{}] is in [{}] state", health.getIndex(), health.getStatus().name());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+		initTemplates();
 		initMappings();
 		initAliases();
 
@@ -421,7 +460,7 @@ public abstract class ElasticsearchAbstractClientFactoryBean extends Elasticsear
 				mappings = autoMappings.toArray(new String[autoMappings.size()]);
 			} catch (IOException|URISyntaxException e) {
 				logger.debug("Automatic discovery does not succeed for finding json files in classpath under " + classpathRoot + ".");
-				logger.trace(e);
+				logger.trace("", e);
             }
         }
 	}
@@ -448,7 +487,7 @@ public abstract class ElasticsearchAbstractClientFactoryBean extends Elasticsear
 				templates = autoTemplates.toArray(new String[autoTemplates.size()]);
 			} catch (IOException|URISyntaxException e) {
 				logger.debug("Automatic discovery does not succeed for finding json files in classpath under " + classpathRoot + ".");
-				logger.trace(e);
+				logger.trace("", e);
             }
         }
 	}
@@ -462,45 +501,49 @@ public abstract class ElasticsearchAbstractClientFactoryBean extends Elasticsear
 		checkClient();
 		// We extract indexes and mappings to manage from mappings definition
 		if (mappings != null && mappings.length > 0) {
-			Map<String, Collection<String>> indexes = new HashMap<>();
-			
-			for (int i = 0; i < mappings.length; i++) {
-				String indexmapping = mappings[i];
-				String[] indexmappingsplitted = indexmapping.split("/");
-				String index = indexmappingsplitted[0];
-
-                if (index == null) throw new Exception("Can not read index in [" + indexmapping +
-                        "]. Check that mappings contains only indexname/mappingname elements.");
-
-                // We add the mapping in the collection of its index
-                if (!indexes.containsKey(index)) {
-                    indexes.put(index, new ArrayList<String>());
-                }
-
-                if (indexmappingsplitted.length > 1) {
-                    String mapping = indexmappingsplitted[1];
-                    indexes.get(index).add(mapping);
-                }
-			}
+            Map<String, Collection<String>> indices = getIndexMappings(mappings);
 			
 			// Let's initialize indexes and mappings if needed
-			for (String index : indexes.keySet()) {
-				createIndex(client, classpathRoot, index);
+			for (String index : indices.keySet()) {
+				createIndex(client, classpathRoot, index, forceMapping);
 				if (mergeSettings) {
 					updateSettings(client, classpathRoot, index);
 				}
 
-				Collection<String> mappings = indexes.get(index);
+				Collection<String> mappings = indices.get(index);
 				for (Iterator<String> iterator = mappings.iterator(); iterator
 						.hasNext();) {
 					String type = iterator.next();
-					createMapping(client, classpathRoot, index, type, mergeMapping, forceMapping);
+					createMapping(client, classpathRoot, index, type, mergeMapping);
 				}
 			}
 		}
 	}
 
-	/**
+    private static Map<String, Collection<String>> getIndexMappings(String[] mappings) throws Exception {
+        Map<String, Collection<String>> indices = new HashMap<>();
+
+        for (int i = 0; i < mappings.length; i++) {
+            String indexmapping = mappings[i];
+            String[] indexmappingsplitted = indexmapping.split("/");
+            String index = indexmappingsplitted[0];
+
+            if (index == null) throw new Exception("Can not read index in [" + indexmapping +
+            "]. Check that mappings contains only indexname/mappingname elements.");
+
+            // We add the mapping in the collection of its index
+            if (!indices.containsKey(index)) {
+                indices.put(index, new ArrayList<String>());
+            }
+
+            if (indexmappingsplitted.length > 1) {
+                indices.get(index).add(indexmappingsplitted[1]);
+            }
+        }
+        return indices;
+    }
+
+    /**
 	 * Init aliases if needed.
 	 * @throws Exception 
 	 */

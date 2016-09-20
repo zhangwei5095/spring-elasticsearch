@@ -19,15 +19,20 @@
 
 package fr.pilato.spring.elasticsearch.xml;
 
-import org.elasticsearch.node.Node;
+import org.elasticsearch.client.Client;
+import org.elasticsearch.client.transport.TransportClient;
+import org.elasticsearch.common.transport.TransportAddress;
 import org.junit.Test;
 
-import static org.hamcrest.Matchers.is;
+import java.util.List;
+
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 
 
-public class NodeNamespaceTest extends AbstractXmlContextModel {
-    private String[] xmlBeans = {"models/node-namespace/node-namespace-context.xml"};
+public class EmptyProperties84Test extends AbstractXmlContextModel {
+    private String[] xmlBeans = {"models/empty-properties-84/empty-properties-84-context.xml"};
 
     @Override
     String[] xmlBeans() {
@@ -35,14 +40,13 @@ public class NodeNamespaceTest extends AbstractXmlContextModel {
     }
 
 	@Test
-	public void test_simple_node() {
-		Node node = checkNode("testNode");
-        assertThat(node.settings().get("cluster.name"), is("elasticsearch"));
-	}
-	
-	@Test
-	public void test_node_settings() {
-        Node node = checkNode("testNodeSettings");
-        assertThat(node.settings().get("cluster.name"), is("junit.cluster.xml"));
+	public void test_transport_client() {
+		Client client = checkClient();
+        assertThat(client, instanceOf(TransportClient.class));
+
+        TransportClient tClient = (TransportClient) client;
+        List<TransportAddress> addresses = tClient.transportAddresses();
+        assertThat(addresses, not(emptyCollectionOf(TransportAddress.class)));
+        assertThat(addresses.size(), is(1));
 	}
 }

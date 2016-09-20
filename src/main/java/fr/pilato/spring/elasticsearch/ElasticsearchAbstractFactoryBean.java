@@ -19,8 +19,8 @@
 
 package fr.pilato.spring.elasticsearch;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -33,9 +33,9 @@ import java.util.Properties;
  */
 public abstract class ElasticsearchAbstractFactoryBean {
 
-    protected final Log logger = LogFactory.getLog(getClass());
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
 
-    protected String settingsFile = "es.properties";
+    protected String settingsFile = null;
 	
 	protected Map<String, String> settings;
 
@@ -47,14 +47,14 @@ public abstract class ElasticsearchAbstractFactoryBean {
 
 	/**
 	 * Elasticsearch Settings file classpath URL (default : es.properties)
-	 * <p>Example :<br/>
+	 * <p>Example :</p>
  	 * <pre>
 	 * {@code
 	 * <property name="settingsFile" value="es.properties" />
 	 * }
 	 * </pre>
 	 * @param settingsFile the settingsFile to set
-	 * @see {@link #setSettings(Map)} to define settings in spring xml file
+	 * @see #setSettings(Map) to define settings in spring xml file
      * @deprecated by {@link #setProperties(java.util.Properties)}
 	 */
     @Deprecated
@@ -66,10 +66,10 @@ public abstract class ElasticsearchAbstractFactoryBean {
 
 	/**
 	 * Embedded Elasticsearch settings
-	 * <p>Example :<br/>
+	 * <p>Example :</p>
 	 * 
 	 * @param settings
-	 * @see {@link #setSettingsFile(String)} to define settings in file
+	 * @see #setSettingsFile(String) to define settings in file
      * @deprecated by {@link #setProperties(java.util.Properties)}
 	 */
     @Deprecated
@@ -82,6 +82,7 @@ public abstract class ElasticsearchAbstractFactoryBean {
      * Elasticsearch properties
      * <p>Example:</p>
      * <pre>
+	 * {@code
      *   <util:map id="esproperties">
      *     <entry key="cluster.name" value="newclustername"/>
      *   </util:map>
@@ -89,11 +90,14 @@ public abstract class ElasticsearchAbstractFactoryBean {
      * <bean id="esClient" class="fr.pilato.spring.elasticsearch.ElasticsearchClientFactoryBean" >
      *   <property name="properties" ref="esproperties" />
      * </bean>
+	 * }
      * </pre>
      * <p>Example:</p>
      * <pre>
+     * {@code
      *   <util:properties id="esproperties" location="classpath:fr/pilato/spring/elasticsearch/xml/esnode-transport.properties"/>
      *   <elasticsearch:node id="esNode" properties="esproperties" />
+     * }
      * </pre>
      * @param properties the properties
      */

@@ -19,13 +19,20 @@
 
 package fr.pilato.spring.elasticsearch;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.common.settings.ImmutableSettings;
+import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
+import org.elasticsearch.plugins.Plugin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.FactoryBean;
+import org.springframework.util.ClassUtils;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Collection;
+import java.util.Collections;
 
 /**
  * An {@link FactoryBean} used to create an ElasticSearch Transport {@link Client}.
@@ -52,10 +59,12 @@ import org.springframework.beans.factory.FactoryBean;
  */
 public class ElasticsearchTransportClientFactoryBean extends ElasticsearchAbstractClientFactoryBean {
 
-	protected final Log logger = LogFactory.getLog(getClass());
+	protected final Logger logger = LoggerFactory.getLogger(getClass());
 
 	private String[] esNodes =  { "localhost:9300" };
-	
+
+	private String[] plugins = { };
+
 	/**
 	 * Define ES nodes to communicate with.
 	 * @return An array of nodes hostname:port
@@ -63,19 +72,19 @@ public class ElasticsearchTransportClientFactoryBean extends ElasticsearchAbstra
 	public String[] getEsNodes() {
 		return esNodes;
 	}
-	
+
 	/**
 	 * Define ES nodes to communicate with.
-	 * <br/>use : hostname:port form
-	 * <p>Example :<br/>
- 	 * <pre>
+	 * <br>use : hostname:port form
+	 * <p>Example :</p>
+	 * <pre>
 	 * {@code
 	 * <property name="esNodes">
-     *  <list>
-     *   <value>localhost:9300</value>
-     *   <value>localhost:9301</value>
-     *  </list>
-     * </property>
+	 *  <list>
+	 *   <value>localhost:9300</value>
+	 *   <value>localhost:9301</value>
+	 *  </list>
+	 * </property>
 	 * }
 	 * </pre>
 	 * If not set, default to [ "localhost:9300" ].
@@ -85,25 +94,57 @@ public class ElasticsearchTransportClientFactoryBean extends ElasticsearchAbstra
 	public void setEsNodes(String[] esNodes) {
 		this.esNodes = esNodes;
 	}
-	
+
+	/**
+	 * Define optional plugins.
+	 * <br>use : fully.qualified.class.name.Plugin form
+	 * <p>Example :</p>
+ 	 * <pre>
+	 * {@code
+	 * <property name="plugins">
+     *  <set>
+     *   <value>org.elasticsearch.plugin.deletebyquery.DeleteByQueryPlugin</value>
+     *  </set>
+     * </property>
+	 * }
+	 * </pre>
+	 * @param plugins An array of fully qualified plugin classes
+	 */
+	public void setPlugins(String[] plugins) throws ClassNotFoundException {
+		this.plugins = plugins;
+	}
+
+	/**
+	 * Define optional plugins.
+	 * @return A set of plugins
+	 */
+	public String[] getPlugins() {
+		return plugins;
+	}
+
 	@Override
 	protected Client buildClient() throws Exception {
-        ImmutableSettings.Builder builder = ImmutableSettings.settingsBuilder();
+		Settings.Builder settingsBuilder = Settings.builder();
 
         if (null != this.settings && null == properties) {
-            builder.put(this.settings);
+            settingsBuilder.put(this.settings);
         }
 
         if (null != this.settingsFile && null == properties) {
             logger.warn("settings has been deprecated in favor of properties. See issue #15: https://github.com/dadoonet/spring-elasticsearch/issues/15.");
-            builder.loadFromClasspath(this.settingsFile);
+			settingsBuilder.loadFromStream(settingsFile, ElasticsearchTransportClientFactoryBean.class.getResourceAsStream("/" + settingsFile));
         }
 
         if (null != this.properties) {
-            builder.put(this.properties);
+            settingsBuilder.put(this.properties);
         }
 
-		TransportClient client = new TransportClient(builder.build());
+		TransportClient.Builder clientBuilder = TransportClient.builder().settings(settingsBuilder.build());
+		for (String plugin : plugins) {
+			logger.debug("Adding plugin [{}]", plugin);
+			clientBuilder.addPlugin((Class<? extends Plugin>) ClassUtils.resolveClassName(plugin, Thread.currentThread().getContextClassLoader()));
+		}
+		TransportClient client = clientBuilder.build();
 
 		for (int i = 0; i < esNodes.length; i++) {
 			client.addTransportAddress(toAddress(esNodes[i]));
@@ -111,22 +152,22 @@ public class ElasticsearchTransportClientFactoryBean extends ElasticsearchAbstra
 
 		return client;
 	}
-	
+
 	/**
 	 * Helper to define an hostname and port with a String like hostname:port
 	 * @param address Node address hostname:port (or hostname)
 	 * @return
 	 */
-	private InetSocketTransportAddress toAddress(String address) {
+	private InetSocketTransportAddress toAddress(String address) throws UnknownHostException {
 		if (address == null) return null;
-		
+
 		String[] splitted = address.split(":");
 		int port = 9300;
 		if (splitted.length > 1) {
 			port = Integer.parseInt(splitted[1]);
 		}
-		
-		return new InetSocketTransportAddress(splitted[0], port);
+
+		return new InetSocketTransportAddress(InetAddress.getByName(splitted[0]), port);
 	}
-	
+
 }
